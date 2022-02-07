@@ -11,6 +11,8 @@
 
 static const char *s_listen_on = "mqtt://0.0.0.0:1883";
 
+char ip_buf[100];
+
 // A list of subscription, held in memory
 struct sub {
   struct sub *next;
@@ -29,10 +31,12 @@ static void signal_handler(int signo) {
 // Event handler function
 static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
   if (ev == MG_EV_MQTT_CMD) {
+    mg_ntoa(&c->peer, ip_buf, sizeof(ip_buf));
     struct mg_mqtt_message *mm = (struct mg_mqtt_message *) ev_data;
-    LOG(LL_DEBUG, ("cmd %d qos %d", mm->cmd, mm->qos));
+    LOG(LL_INFO, ("cmd 0x%x qos %d", mm->cmd, mm->qos));
     switch (mm->cmd) {
       case MQTT_CMD_CONNECT: {
+        LOG(LL_INFO, ("Received connect request from %s.",ip_buf));
         // Client connects
         if (mm->dgram.len < 9) {
           mg_error(c, "Malformed MQTT frame");
@@ -46,6 +50,7 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
         break;
       }
       case MQTT_CMD_SUBSCRIBE: {
+        LOG(LL_INFO, ("Received subscribe request. from %s.",ip_buf));
         // Client subscribes
         size_t pos = 4;  // Initial topic offset, where ID ends
         uint8_t qos, resp[256];
@@ -58,7 +63,7 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
           sub->qos = qos;
           LIST_ADD_HEAD(struct sub, &s_subs, sub);
           LOG(LL_INFO,
-              ("SUB %p [%.*s]", c->fd, (int) sub->topic.len, sub->topic.ptr));
+              ("%s SUB %p [%.*s]", ip_buf, c->fd, (int) sub->topic.len, sub->topic.ptr));
           // Change '+' to '*' for topic matching using mg_globmatch
           for (size_t i = 0; i < sub->topic.len; i++) {
             if (sub->topic.ptr[i] == '+') ((char *) sub->topic.ptr)[i] = '*';
