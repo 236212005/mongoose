@@ -50,7 +50,7 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
         break;
       }
       case MQTT_CMD_SUBSCRIBE: {
-        LOG(LL_INFO, ("Received subscribe request. from %s.",ip_buf));
+        LOG(LL_INFO, ("Received subscribe request from %s.",ip_buf));
         // Client subscribes
         size_t pos = 4;  // Initial topic offset, where ID ends
         uint8_t qos, resp[256];
